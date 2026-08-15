@@ -1,5 +1,9 @@
 # sitebot
 
+> **AI-generated code notice:** This project was generated with the assistance of AI tools.
+> Review the source carefully before using it in production, and test against a sandbox
+> environment before going live.
+
 A self-hostable AI chatbot that answers questions grounded in your own site's content —
 over WhatsApp, Telegram, and an embeddable web widget. Runs on Cloudflare Workers.
 
