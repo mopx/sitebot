@@ -58,6 +58,33 @@ export const WIDGET_STYLES = `
     overflow: hidden;
   }
   .panel[hidden] { display: none; }
+  /* Below common phone-width breakpoints, take over the whole viewport
+     instead of floating as a small anchored card — a 22rem-wide panel is
+     cramped on a phone, and position: fixed here escapes the host's own
+     small, bottom-right-anchored box entirely (no ancestor here has a
+     transform/filter, so fixed positioning resolves against the real
+     viewport, not :host). */
+  @media (max-width: 640px) {
+    .panel {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      max-width: 100%;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      border: none;
+    }
+    .header {
+      padding-top: calc(0.75rem + env(safe-area-inset-top));
+    }
+    .composer {
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    }
+    :host(.open) .launcher {
+      display: none;
+    }
+  }
   .header {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--sb-border);

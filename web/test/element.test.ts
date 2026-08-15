@@ -41,6 +41,16 @@ describe("SitebotChatElement", () => {
     expect((shadow.querySelector(".panel") as HTMLElement).hidden).toBe(false);
   });
 
+  it("toggles an 'open' class on the host element so mobile full-screen styling can key off it", () => {
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    expect(el.classList.contains("open")).toBe(false);
+    (shadow.querySelector(".launcher") as HTMLButtonElement).click();
+    expect(el.classList.contains("open")).toBe(true);
+    (shadow.querySelector(".header button") as HTMLButtonElement).click();
+    expect(el.classList.contains("open")).toBe(false);
+  });
+
   it("sends a message on submit and renders the reply", async () => {
     const el = mount();
     const shadow = el.shadowRoot!;

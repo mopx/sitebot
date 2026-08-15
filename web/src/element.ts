@@ -66,6 +66,7 @@ export class SitebotChatElement extends HTMLElement {
   private togglePanel(next: boolean): void {
     this.open = next;
     this.panelEl.hidden = !next;
+    this.classList.toggle("open", next);
     if (next) this.inputEl.focus();
   }
 
