@@ -1,8 +1,19 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import type { ChatTurn } from "@sitebot/shared";
 import type { Env } from "../env.js";
 import { createTenantStore } from "../tenancy/tenant-store.js";
 import { timingSafeEqual } from "../lib/timingSafe.js";
+
+/**
+ * `ConversationDO.getHistory` is a public method on the DO class but isn't
+ * part of `ConversationRpc` (core/pipeline.ts) — that interface only
+ * describes what the pipeline needs. This route talks to the DO directly,
+ * so it declares just the one extra method it uses.
+ */
+interface ConversationHistoryRpc {
+  getHistory(historyWindow: number): Promise<ChatTurn[]>;
+}
 
 export const adminRoute = new Hono<{ Bindings: Env }>();
 
@@ -128,4 +139,22 @@ adminRoute.patch("/admin/tenants/:id", async (c) => {
   } catch {
     return c.json({ error: "tenant_not_found" }, 404);
   }
+});
+
+/**
+ * Reads a conversation's stored history. `:conversationId` is the same
+ * opaque id `/api/chat` and the webhook routes already return
+ * (`${tenantId}:${channel}:${senderHash}` — see core/deps.ts#conversationKey)
+ * — it doubles as the ConversationDO's name, so no separate lookup table is
+ * needed. Debugging/support tool only: this returns raw message text, which
+ * is exactly why it lives behind the same admin bearer auth as tenant
+ * management, not a public route.
+ */
+adminRoute.get("/admin/conversations/:conversationId", async (c) => {
+  const conversationId = c.req.param("conversationId");
+  const limit = Math.min(Number(c.req.query("limit") ?? 100) || 100, 500);
+  const id = c.env.CONVERSATION.idFromName(conversationId);
+  const stub = c.env.CONVERSATION.get(id) as unknown as ConversationHistoryRpc;
+  const history = await stub.getHistory(limit);
+  return c.json({ conversationId, history });
 });

@@ -73,6 +73,17 @@ curl -X PATCH https://your-worker.example.com/admin/tenants/<id> \
 Each tenant needs its **own** AI Search instance (`aiSearchInstance`) pointed at its own site — see
 `docs/SETUP.md` §1 for creating one, repeated per tenant.
 
+```bash
+# Read a conversation's stored history — debugging/support only, not a dashboard feature.
+# :conversationId is the same opaque id /api/chat and the webhook routes already return
+# (it doubles as the ConversationDO's name — see core/deps.ts#conversationKey).
+curl "https://your-worker.example.com/admin/conversations/<conversationId>?limit=100" \
+  -H "Authorization: Bearer $ADMIN_API_KEY"
+```
+
+This returns raw message text — there's no separate lookup to browse conversations by tenant or
+sender, only by an id you already have from a prior `/api/chat` response or webhook log line.
+
 ## Credential security
 
 Channel credentials (WhatsApp access token, Telegram bot token, etc.) are AES-256-GCM encrypted
