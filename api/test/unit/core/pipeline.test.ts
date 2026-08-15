@@ -152,6 +152,30 @@ describe("handleTurn", () => {
     expect(retriever.retrieve).not.toHaveBeenCalled();
   });
 
+  it("replies with a friendly greeting, skipping retrieval, generation, and budget, for a bare 'hey'", async () => {
+    const { deps, conversation, budget, retriever, generator } = buildDeps({
+      conversation: fakeConversation(async () => ({
+        status: "ok",
+        history: historyEndingWith("Hey"),
+        lang: "en",
+      })),
+    });
+    const result = await handleTurn(deps, { ...inbound, text: "Hey" });
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") {
+      expect(result.text).toContain(tenant.subjectName);
+      expect(result.text).not.toContain("No info on that.");
+      expect(result.sources).toHaveLength(0);
+    }
+    expect(retriever.retrieve).not.toHaveBeenCalled();
+    expect(generator.generate).not.toHaveBeenCalled();
+    expect(budget.tryConsume).not.toHaveBeenCalled();
+    expect(conversation.completeTurn).toHaveBeenCalledWith(
+      expect.stringContaining(tenant.subjectName),
+      "en",
+    );
+  });
+
   it("deflects without calling the generator or spending budget when retrieval finds nothing", async () => {
     const { deps, conversation, budget, generator } = buildDeps({
       retriever: new StubRetriever([]),

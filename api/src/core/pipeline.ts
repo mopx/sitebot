@@ -10,6 +10,7 @@ import { GenerationError } from "./generate.js";
 import type { Retriever } from "./retrieval.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { deflectionCopy, fallbackCopy } from "./errors.js";
+import { isGreeting, greetingCopy } from "./greeting.js";
 import { log } from "../lib/log.js";
 
 /** RPC-shaped view of ConversationDO — see durable/conversation.ts for the implementation. */
@@ -74,6 +75,15 @@ export async function handleTurn(deps: PipelineDeps, inbound: InboundMessage): P
   }
 
   const { history, lang } = turn;
+
+  // A bare "hi"/"hola" has no question to ground in retrieved content —
+  // see core/greeting.ts for why this needs to be its own path rather than
+  // falling into the empty-chunks deflection below.
+  if (isGreeting(inbound.text)) {
+    const text = greetingCopy(deps.tenant, lang);
+    await deps.conversation.completeTurn(text, lang);
+    return { kind: "ok", text, sources: [] };
+  }
 
   let chunks;
   try {
