@@ -22,4 +22,11 @@ jobs:
 
       - run: pnpm build
 
-      - run: pnpm validate
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test (shared, web, api — unit + integration)
+        run: pnpm test:run
