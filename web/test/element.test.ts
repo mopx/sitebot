@@ -1,0 +1,69 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { defineSitebotChatElement, SitebotChatElement } from "../src/element.js";
+
+beforeEach(() => {
+  defineSitebotChatElement("sitebot-chat-test");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ reply: "Jorge builds apps.", sources: [], conversationId: "c1" }),
+        ),
+    ),
+  );
+});
+
+afterEach(() => {
+  document.body.innerHTML = "";
+  vi.unstubAllGlobals();
+});
+
+function mount(): SitebotChatElement {
+  const el = document.createElement("sitebot-chat-test") as SitebotChatElement;
+  el.configure({ apiUrl: "https://bot.example.com" });
+  document.body.appendChild(el);
+  return el;
+}
+
+describe("SitebotChatElement", () => {
+  it("renders a launcher button and a hidden panel by default", () => {
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    expect(shadow.querySelector(".launcher")).not.toBeNull();
+    expect((shadow.querySelector(".panel") as HTMLElement).hidden).toBe(true);
+  });
+
+  it("opens the panel when the launcher is clicked", () => {
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    (shadow.querySelector(".launcher") as HTMLButtonElement).click();
+    expect((shadow.querySelector(".panel") as HTMLElement).hidden).toBe(false);
+  });
+
+  it("sends a message on submit and renders the reply", async () => {
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "What does Jorge do?";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".message.assistant")).toHaveLength(1);
+    });
+
+    const userMsg = shadow.querySelector(".message.user");
+    const assistantMsg = shadow.querySelector(".message.assistant");
+    expect(userMsg?.textContent).toBe("What does Jorge do?");
+    expect(assistantMsg?.textContent).toBe("Jorge builds apps.");
+  });
+
+  it("clears the input after sending", () => {
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "hello";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+    expect(input.value).toBe("");
+  });
+});

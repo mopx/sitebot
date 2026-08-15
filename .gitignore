@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+*.local
+.DS_Store
+coverage/
+*.tsbuildinfo
+.turbo/
+api/public/widget.js
+api/public/widget.js.map
+api/worker-configuration.d.ts

@@ -1,0 +1,21 @@
+{
+  "name": "@sitebot/shared",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Channel-agnostic types and the persona config contract, shared by @sitebot/api and @sitebot/web.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

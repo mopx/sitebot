@@ -1,0 +1,13 @@
+{
+  "name": "@sitebot/config",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Persona config for this deployment — see persona.example.ts to adapt for a different site. Not a real package (no scripts/tests); exists only so pnpm links @sitebot/shared here for type-checking.",
+  "type": "module",
+  "dependencies": {
+    "@sitebot/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

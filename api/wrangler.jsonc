@@ -1,0 +1,106 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Rename this before deploying your own instance — it becomes part of your
+  // *.workers.dev subdomain unless you attach a custom domain (see docs/SETUP.md).
+  "name": "sitebot-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-14",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Serves web/'s build output (the embeddable chat widget) from the same
+  // origin as the API — one deploy, one domain, no separate static host.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+  },
+
+  // AI Search — the RAG knowledge base(s). Namespace binding (not the simpler
+  // single-instance `ai_search` binding) because multi-tenant mode calls
+  // `.get(instanceName)` with a *different* instance name per tenant at
+  // runtime — see src/core/retrieval.ts. `remote: true` is required: AI
+  // Search never runs locally, so `wrangler dev` proxies these calls to your
+  // deployed instance. See docs/SETUP.md for creating the instance(s).
+  "ai_search_namespaces": [
+    {
+      "binding": "AI_SEARCH",
+      "namespace": "default",
+      "remote": true,
+    },
+  ],
+
+  // Durable Objects: one ConversationDO per (tenant, channel, sender) —
+  // dedup + rate-limited history — and one BudgetDO per tenant, a daily
+  // circuit breaker on Claude spend. See src/durable/*.ts and
+  // docs/ARCHITECTURE.md for why DOs were chosen over D1 for this.
+  "durable_objects": {
+    "bindings": [
+      { "name": "CONVERSATION", "class_name": "ConversationDO" },
+      { "name": "BUDGET", "class_name": "BudgetDO" },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ConversationDO", "BudgetDO"],
+    },
+  ],
+
+  // D1: the tenant registry (multi-tenant/SaaS mode only — see
+  // src/tenancy/tenant-store.ts). Unused and harmless in single-tenant mode.
+  // Replace database_id after `wrangler d1 create sitebot-db` (docs/SETUP.md).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sitebot-db",
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations",
+    },
+  ],
+
+  // Cheap, eventually-consistent burst brake in front of the exact per-tenant
+  // daily quota enforced by ConversationDO — see docs/ARCHITECTURE.md §Rate
+  // limiting for why both layers exist. `period` must be 10 or 60.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+  ],
+
+  "vars": {
+    // "single" = one bot from /config/persona.ts + env secrets (default —
+    //   what you get by just forking and deploying).
+    // "multi"  = SaaS mode; tenants live in D1, managed via /admin/tenants.
+    // See docs/SAAS.md.
+    "TENANT_MODE": "single",
+
+    // Used only when TENANT_MODE = "single".
+    "SINGLE_TENANT_SLUG": "default",
+    "AI_SEARCH_INSTANCE": "jorgeyau-site",
+
+    "CLAUDE_MODEL": "claude-haiku-4-5",
+    "HISTORY_WINDOW_MESSAGES": "12",
+    "RATE_LIMIT_PER_DAY_DEFAULT": "40",
+    "RATE_LIMIT_PER_DAY_WEB": "25",
+    "BUDGET_DAILY_CALL_CAP": "1500",
+    "RETRIEVAL_MAX_RESULTS": "5",
+    "RETRIEVAL_MATCH_THRESHOLD": "0.4",
+    "MAX_REPLY_TOKENS": "800",
+
+    // Comma-separated. The web widget's CORS allowlist.
+    "ALLOWED_WEB_ORIGINS": "http://localhost:8787,http://localhost:3000",
+  },
+
+  // Secrets (never in this file — set with `wrangler secret put <NAME>`,
+  // or in `.dev.vars` for local dev; see .dev.vars.example):
+  //   ANTHROPIC_API_KEY   - required, all modes
+  //   SENDER_ID_SALT      - required, all modes (HMAC salt for hashing sender ids)
+  //   ADMIN_API_KEY       - required in "multi" mode (bearer token for /admin/*)
+  //   TENANT_SECRETS_KEY  - required in "multi" mode (AES-256 key, base64, encrypts
+  //                         tenant channel credentials at rest in D1 — see src/lib/crypto.ts)
+  //   WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_APP_SECRET,
+  //   WHATSAPP_VERIFY_TOKEN, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET
+  //                       - single-tenant mode only; in multi-tenant mode these
+  //                         live per-tenant in D1 instead (see /admin API).
+}

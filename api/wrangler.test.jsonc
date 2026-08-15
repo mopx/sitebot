@@ -1,0 +1,90 @@
+// Test-only Wrangler config, used exclusively by vitest.config.ts.
+// Identical to wrangler.jsonc EXCEPT it omits `ai_search_namespaces`.
+//
+// Why this file has to exist: AI Search never runs locally — its binding
+// requires `remote: true`, which makes `wrangler`/vitest-pool-workers open a
+// real Cloudflare API session (account lookup, OAuth) to proxy calls to a
+// deployed instance. That's exactly what we must never do from an automated
+// test run (no deploy, no live-account access — see CLAUDE.md). Every test
+// that needs retrieval results injects a `StubRetriever`
+// (core/retrieval.ts's `Retriever` interface) instead of touching
+// `env.AI_SEARCH` directly, so the binding is never actually needed here.
+//
+// If you add a binding to wrangler.jsonc, mirror it here too (everything
+// else — D1, Durable Objects, ratelimits, assets — runs fully locally via
+// Miniflare, no account needed).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "sitebot-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-14",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+  },
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "CONVERSATION", "class_name": "ConversationDO" },
+      { "name": "BUDGET", "class_name": "BudgetDO" },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ConversationDO", "BudgetDO"],
+    },
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sitebot-db-test",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+  ],
+
+  "vars": {
+    "TENANT_MODE": "single",
+    "SINGLE_TENANT_SLUG": "default",
+    "AI_SEARCH_INSTANCE": "test-instance",
+    "CLAUDE_MODEL": "claude-haiku-4-5",
+    "HISTORY_WINDOW_MESSAGES": "12",
+    "RATE_LIMIT_PER_DAY_DEFAULT": "40",
+    "RATE_LIMIT_PER_DAY_WEB": "25",
+    "BUDGET_DAILY_CALL_CAP": "1500",
+    "RETRIEVAL_MAX_RESULTS": "5",
+    "RETRIEVAL_MATCH_THRESHOLD": "0.4",
+    "MAX_REPLY_TOKENS": "800",
+    "ALLOWED_WEB_ORIGINS": "http://localhost:8787,http://localhost:3000",
+
+    // Fake values, local-test-only — NOT real credentials. Lets route tests
+    // exercise the WhatsApp/Telegram handshake and chat pipeline end-to-end
+    // without ever calling a real API (there is no AI_SEARCH binding in this
+    // file — see the top of this file — so any test that reaches retrieval
+    // deterministically hits the "AI Search unreachable" fallback path
+    // rather than a live network call; the Anthropic key is never dereferenced
+    // unless that fallback is bypassed, which no test here does).
+    "ANTHROPIC_API_KEY": "test-anthropic-key",
+    "SENDER_ID_SALT": "test-sender-salt",
+    "ADMIN_API_KEY": "test-admin-key",
+    "TENANT_SECRETS_KEY": "hqhZ8sT1a5t3aG4nH1u1cE0kQx2yZb8wJvV3nX9pQmA=",
+    "WHATSAPP_ACCESS_TOKEN": "test-whatsapp-token",
+    "WHATSAPP_PHONE_NUMBER_ID": "test-phone-number-id",
+    "WHATSAPP_APP_SECRET": "test-whatsapp-app-secret",
+    "WHATSAPP_VERIFY_TOKEN": "test-verify-token",
+    "TELEGRAM_BOT_TOKEN": "test-telegram-token",
+    "TELEGRAM_WEBHOOK_SECRET": "test-telegram-webhook-secret",
+  },
+}

@@ -1,0 +1,8 @@
+packages:
+  - shared
+  - api
+  - web
+  - config
+allowBuilds:
+  esbuild: true
+  workerd: true

@@ -1,0 +1,19 @@
+# Copy to `.dev.vars` (gitignored) and fill in for local development.
+# `wrangler dev` loads this automatically. Never commit the real file.
+
+ANTHROPIC_API_KEY=
+SENDER_ID_SALT=change-me-to-a-random-string
+
+# Required only when TENANT_MODE=multi (see wrangler.jsonc):
+ADMIN_API_KEY=change-me-to-a-random-string
+# 32 random bytes, base64-encoded, e.g.: openssl rand -base64 32
+TENANT_SECRETS_KEY=
+
+# Required only when TENANT_MODE=single (see wrangler.jsonc) and you're
+# testing the WhatsApp/Telegram channels — the web widget works without these.
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_APP_SECRET=
+WHATSAPP_VERIFY_TOKEN=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=

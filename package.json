@@ -1,0 +1,33 @@
+{
+  "name": "sitebot",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Self-hostable AI chatbot (WhatsApp, Telegram, web widget) that answers questions grounded in your own site's content. Built on Cloudflare Workers + Hono + Claude.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.34.1",
+  "scripts": {
+    "dev": "pnpm --filter @sitebot/api dev",
+    "build": "pnpm --filter @sitebot/web build && pnpm --filter @sitebot/api build",
+    "deploy": "pnpm --filter @sitebot/api deploy",
+    "test": "pnpm -r test",
+    "test:run": "pnpm -r test:run",
+    "type-check": "pnpm -r type-check",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "validate": "pnpm type-check && pnpm lint && pnpm test:run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "@typescript-eslint/eslint-plugin": "^8.22.0",
+    "@typescript-eslint/parser": "^8.22.0",
+    "eslint": "^9.19.0",
+    "globals": "^17.11.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.9.3"
+  }
+}

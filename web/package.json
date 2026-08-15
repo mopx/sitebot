@@ -1,0 +1,23 @@
+{
+  "name": "@sitebot/web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Embeddable chat widget — a vanilla-TS custom element, bundled to a single IIFE served by the Worker.",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 4321 --directory demo",
+    "build": "node build.mjs",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@sitebot/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0",
+    "jsdom": "^28.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}
