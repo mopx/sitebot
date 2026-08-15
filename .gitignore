@@ -13,3 +13,4 @@ coverage/
 api/public/widget.js
 api/public/widget.js.map
 api/worker-configuration.d.ts
+.gstack/
