@@ -77,6 +77,32 @@ describe("SitebotChatElement", () => {
     expect(input.value).toBe("");
   });
 
+  it("mirrors window.visualViewport onto CSS custom properties while open, so the mobile panel can track the on-screen keyboard", () => {
+    const listeners: Record<string, () => void> = {};
+    vi.stubGlobal("visualViewport", {
+      height: 500,
+      offsetTop: 20,
+      addEventListener: (type: string, fn: () => void) => {
+        listeners[type] = fn;
+      },
+      removeEventListener: vi.fn(),
+    });
+
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    expect(el.style.getPropertyValue("--sb-vv-height")).toBe("");
+
+    (shadow.querySelector(".launcher") as HTMLButtonElement).click();
+    expect(el.style.getPropertyValue("--sb-vv-height")).toBe("500px");
+    expect(el.style.getPropertyValue("--sb-vv-top")).toBe("20px");
+
+    // Simulate the keyboard opening: the visual viewport shrinks, and the
+    // resize listener registered on open should pick up the new value.
+    (window.visualViewport as unknown as { height: number }).height = 300;
+    listeners["resize"]?.();
+    expect(el.style.getPropertyValue("--sb-vv-height")).toBe("300px");
+  });
+
   it("updates the composer text when the host page's document.documentElement.lang changes", async () => {
     const el = mount();
     const shadow = el.shadowRoot!;

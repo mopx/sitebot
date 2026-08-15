@@ -67,11 +67,19 @@ export const WIDGET_STYLES = `
   @media (max-width: 640px) {
     .panel {
       position: fixed;
-      inset: 0;
+      left: 0;
+      right: 0;
+      /* --sb-vv-top/--sb-vv-height mirror window.visualViewport (see
+         element.ts) so the panel tracks the actually-visible region when
+         the on-screen keyboard is open, instead of the pre-keyboard
+         layout viewport — otherwise the header/close button end up
+         scrolled off-screen above the keyboard. dvh is the fallback for
+         the brief window before JS has run a first sync. */
+      top: var(--sb-vv-top, 0px);
+      height: var(--sb-vv-height, 100dvh);
       width: 100%;
       max-width: 100%;
-      height: 100%;
-      max-height: 100%;
+      max-height: var(--sb-vv-height, 100dvh);
       border-radius: 0;
       border: none;
     }

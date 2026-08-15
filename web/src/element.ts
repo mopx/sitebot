@@ -52,6 +52,8 @@ export class SitebotChatElement extends HTMLElement {
   disconnectedCallback(): void {
     document.removeEventListener("keydown", this.handleKeydown);
     this.langObserver?.disconnect();
+    window.visualViewport?.removeEventListener("resize", this.syncVisualViewport);
+    window.visualViewport?.removeEventListener("scroll", this.syncVisualViewport);
   }
 
   /**
@@ -90,11 +92,37 @@ export class SitebotChatElement extends HTMLElement {
     if (event.key === "Escape" && this.open) this.togglePanel(false);
   };
 
+  /**
+   * Mobile Safari (and Chrome on Android to a lesser extent) doesn't shrink
+   * the *layout* viewport when the on-screen keyboard opens — it shrinks the
+   * *visual* one and scrolls the page underneath. A `position: fixed;
+   * inset: 0` element stays sized to the old, bigger layout viewport, so the
+   * header (and its close button) gets pushed off-screen above the visible
+   * area. `window.visualViewport` reports the actually-visible region;
+   * mirroring it onto custom properties lets the mobile full-screen CSS
+   * (styles.ts) track the shrunk viewport instead of assuming inset: 0 is
+   * always the whole screen.
+   */
+  private syncVisualViewport = (): void => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    this.style.setProperty("--sb-vv-height", `${vv.height}px`);
+    this.style.setProperty("--sb-vv-top", `${vv.offsetTop}px`);
+  };
+
   private togglePanel(next: boolean): void {
     this.open = next;
     this.panelEl.hidden = !next;
     this.classList.toggle("open", next);
-    if (next) this.inputEl.focus();
+    if (next) {
+      this.inputEl.focus();
+      this.syncVisualViewport();
+      window.visualViewport?.addEventListener("resize", this.syncVisualViewport);
+      window.visualViewport?.addEventListener("scroll", this.syncVisualViewport);
+    } else {
+      window.visualViewport?.removeEventListener("resize", this.syncVisualViewport);
+      window.visualViewport?.removeEventListener("scroll", this.syncVisualViewport);
+    }
   }
 
   private render(): void {
