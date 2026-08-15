@@ -75,4 +75,10 @@ describe("buildSystemPrompt", () => {
     const prompt = buildSystemPrompt({ persona, chunks, locale: "en", channel: "web" });
     expect(prompt).toContain("No emoji");
   });
+
+  it("instructs treating a matching need as a lead, not an off-topic redirect", () => {
+    const prompt = buildSystemPrompt({ persona, chunks, locale: "en", channel: "web" });
+    expect(prompt).toContain("that is a lead, not an off-topic");
+    expect(prompt).toContain("Never tell someone to find help elsewhere for something Jorge does.");
+  });
 });

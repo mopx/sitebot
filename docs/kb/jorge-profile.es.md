@@ -7,7 +7,8 @@
 
 # Jorge Yau
 
-Jorge Yau es desarrollador de software full-stack, actualmente disponible para nuevos proyectos.
+Jorge Yau es desarrollador de software full-stack que construye sitios web, aplicaciones web y
+aplicaciones móviles de principio a fin, actualmente disponible para nuevos proyectos.
 
 ## Servicios / habilidades
 
