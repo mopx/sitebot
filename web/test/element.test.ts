@@ -66,4 +66,36 @@ describe("SitebotChatElement", () => {
     (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
     expect(input.value).toBe("");
   });
+
+  it("shows a typing indicator while a reply is pending, and removes it once it arrives", async () => {
+    let resolveFetch!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve;
+          }),
+      ),
+    );
+
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "hello";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelector(".typing")).not.toBeNull();
+    });
+
+    resolveFetch(
+      new Response(JSON.stringify({ reply: "hi there", sources: [], conversationId: "c1" })),
+    );
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelector(".typing")).toBeNull();
+      expect(shadow.querySelector(".message.assistant")?.textContent).toBe("hi there");
+    });
+  });
 });

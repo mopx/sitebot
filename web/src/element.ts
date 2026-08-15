@@ -121,15 +121,27 @@ export class SitebotChatElement extends HTMLElement {
   }
 
   private renderMessages(): void {
-    this.messagesEl.replaceChildren(
-      ...this.messages.map((message) => {
-        const el = document.createElement("div");
-        el.className = `message ${message.role}`;
-        el.textContent = message.text;
-        return el;
-      }),
-    );
+    const messageEls = this.messages.map((message) => {
+      const el = document.createElement("div");
+      el.className = `message ${message.role}`;
+      el.textContent = message.text;
+      return el;
+    });
+    if (this.sending) messageEls.push(this.renderTypingIndicator());
+    this.messagesEl.replaceChildren(...messageEls);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+
+  private renderTypingIndicator(): HTMLDivElement {
+    const el = document.createElement("div");
+    el.className = "typing";
+    el.setAttribute("aria-label", "Typing");
+    el.append(
+      document.createElement("span"),
+      document.createElement("span"),
+      document.createElement("span"),
+    );
+    return el;
   }
 
   private async send(): Promise<void> {

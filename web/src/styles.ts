@@ -103,6 +103,27 @@ export const WIDGET_STYLES = `
     color: #b91c1c;
     font-size: 0.8rem;
   }
+  .typing {
+    align-self: flex-start;
+    background: var(--sb-border);
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.75rem;
+    display: flex;
+    gap: 0.25rem;
+  }
+  .typing span {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: var(--sb-muted);
+    animation: sb-typing 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes sb-typing {
+    0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-0.15rem); }
+  }
   .composer {
     display: flex;
     gap: 0.5rem;
