@@ -135,7 +135,10 @@ export const WIDGET_STYLES = `
     border: 1px solid var(--sb-border);
     border-radius: 0.5rem;
     padding: 0.5rem 0.6rem;
-    font-size: 0.875rem;
+    /* Deliberately 16px, not rem: iOS Safari auto-zooms the page on focus for
+       any input under 16px, and rem here would resolve against the host
+       page's root font-size (outside this widget's control), not ours. */
+    font-size: 16px;
     background: var(--sb-bg);
     color: var(--sb-fg);
   }
