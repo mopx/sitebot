@@ -3,6 +3,11 @@
   // Rename this before deploying your own instance — it becomes part of your
   // *.workers.dev subdomain unless you attach a custom domain (see docs/SETUP.md).
   "name": "sitebot-api",
+  // Pins deploys to one Cloudflare account — needed whenever the logged-in
+  // user/token has access to more than one (wrangler would otherwise
+  // prompt interactively, which breaks CI). Replace with your own account_id
+  // when forking (`wrangler whoami` lists it).
+  "account_id": "15e551a264b959f4db70e9410b1f085b",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-14",
   "compatibility_flags": ["nodejs_compat"],
@@ -52,7 +57,7 @@
     {
       "binding": "DB",
       "database_name": "sitebot-db",
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "database_id": "86300b38-3e0a-4eb1-a8ee-be14be77be79",
       "migrations_dir": "migrations",
     },
   ],
@@ -73,7 +78,7 @@
     //   what you get by just forking and deploying).
     // "multi"  = SaaS mode; tenants live in D1, managed via /admin/tenants.
     // See docs/SAAS.md.
-    "TENANT_MODE": "single",
+    "TENANT_MODE": "multi",
 
     // Used only when TENANT_MODE = "single".
     "SINGLE_TENANT_SLUG": "default",
@@ -89,7 +94,7 @@
     "MAX_REPLY_TOKENS": "800",
 
     // Comma-separated. The web widget's CORS allowlist.
-    "ALLOWED_WEB_ORIGINS": "http://localhost:8787,http://localhost:3000",
+    "ALLOWED_WEB_ORIGINS": "https://www.jorgeyau.com,https://jorgeyau.com,http://localhost:8787,http://localhost:3000",
   },
 
   // Secrets (never in this file — set with `wrangler secret put <NAME>`,
