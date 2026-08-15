@@ -6,27 +6,50 @@ on:
   pull_request:
 
 jobs:
-  validate:
+  build:
     runs-on: [self-hosted, Linux, X64, ood]
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-
       - run: pnpm build
 
-      - name: Type-check
-        run: pnpm type-check
+  type-check:
+    runs-on: [self-hosted, Linux, X64, ood]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm type-check
 
-      - name: Lint
-        run: pnpm lint
+  lint:
+    runs-on: [self-hosted, Linux, X64, ood]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
 
-      - name: Test (shared, web, api — unit + integration)
-        run: pnpm test:run
+  test:
+    runs-on: [self-hosted, Linux, X64, ood]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:run
