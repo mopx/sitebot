@@ -1,4 +1,4 @@
-import type { SupportedLocale } from "@sitebot/shared";
+import { SUPPORTED_LOCALES, type SupportedLocale } from "./locale.js";
 import { WIDGET_STYLES } from "./styles.js";
 import { getOrCreateSessionId } from "./session.js";
 import { sendChatMessage } from "./api.js";
@@ -39,16 +39,43 @@ export class SitebotChatElement extends HTMLElement {
   private messagesEl!: HTMLDivElement;
   private inputEl!: HTMLInputElement;
   private sendButtonEl!: HTMLButtonElement;
+  private langObserver?: MutationObserver;
 
   connectedCallback(): void {
     this.root = this.attachShadow({ mode: "open" });
     this.sessionId = getOrCreateSessionId(window.localStorage);
     this.render();
     document.addEventListener("keydown", this.handleKeydown);
+    this.observeDocumentLang();
   }
 
   disconnectedCallback(): void {
     document.removeEventListener("keydown", this.handleKeydown);
+    this.langObserver?.disconnect();
+  }
+
+  /**
+   * `data-lang` is a static fallback read once at embed time (see
+   * index.ts) — a host page whose language changes without a reload (a
+   * toggle, a client-read `?lang=` param) needs the widget to notice too,
+   * so future messages carry the right hint and the composer's copy
+   * updates without the visitor having to reopen the panel.
+   */
+  private observeDocumentLang(): void {
+    this.langObserver = new MutationObserver(() => {
+      const next = document.documentElement.lang;
+      if (SUPPORTED_LOCALES.includes(next as SupportedLocale) && next !== this.config.lang) {
+        this.config = { ...this.config, lang: next as SupportedLocale };
+        this.updateLocaleText();
+      }
+    });
+    this.langObserver.observe(document.documentElement, { attributeFilter: ["lang"] });
+  }
+
+  private updateLocaleText(): void {
+    this.inputEl.placeholder = this.config.placeholder ?? this.copy.placeholder;
+    this.sendButtonEl.textContent = this.copy.send;
+    this.panelEl.setAttribute("aria-label", this.config.botName ?? this.copy.title);
   }
 
   configure(config: WidgetConfig): void {

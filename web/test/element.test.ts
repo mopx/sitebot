@@ -77,6 +77,24 @@ describe("SitebotChatElement", () => {
     expect(input.value).toBe("");
   });
 
+  it("updates the composer text when the host page's document.documentElement.lang changes", async () => {
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    expect((shadow.querySelector("input") as HTMLInputElement).placeholder).toBe(
+      "Ask a question...",
+    );
+
+    document.documentElement.lang = "es";
+    // MutationObserver callbacks run as a microtask, not synchronously.
+    await vi.waitFor(() => {
+      expect((shadow.querySelector("input") as HTMLInputElement).placeholder).toBe(
+        "Escribe tu pregunta...",
+      );
+    });
+
+    document.documentElement.lang = "";
+  });
+
   it("shows a typing indicator while a reply is pending, and removes it once it arrives", async () => {
     let resolveFetch!: (response: Response) => void;
     vi.stubGlobal(
