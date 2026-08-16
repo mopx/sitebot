@@ -35,10 +35,13 @@ export const WIDGET_STYLES = `
     color: var(--sb-accent-fg);
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    font-size: 1.4rem;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  .launcher svg {
+    width: 1.5rem;
+    height: 1.5rem;
   }
   .panel {
     position: absolute;
