@@ -6,7 +6,7 @@
   "description": "Self-hostable AI chatbot (WhatsApp, Telegram, web widget) that answers questions grounded in your own site's content. Built on Cloudflare Workers + Hono + Claude.",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "packageManager": "pnpm@10.34.1",
   "scripts": {
