@@ -25,4 +25,20 @@ describe("isContactIntent", () => {
   ])("does not treat %j as contact intent", (text) => {
     expect(isContactIntent(text)).toBe(false);
   });
+
+  it.each([
+    "how do i setup a metting",
+    "I want to shedule a call",
+    "I want to setup a meeti g",
+    "¿Cómo puedo agendr una reunion?",
+  ])("tolerates a typo in %j via fuzzy matching", (text) => {
+    expect(isContactIntent(text)).toBe(true);
+  });
+
+  it.each(["wall art for the office", "I hit a wall with this bug", "tall building nearby"])(
+    "does not fuzzy-match short words like 'call'/'meet' against unrelated text (%j)",
+    (text) => {
+      expect(isContactIntent(text)).toBe(false);
+    },
+  );
 });
