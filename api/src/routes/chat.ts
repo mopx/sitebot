@@ -96,5 +96,11 @@ chatRoute.post("/api/chat/:tenant?", async (c) => {
     return c.json<ChatResponse>({ error: "at_capacity" }, 503);
   }
 
-  return c.json<ChatResponse>({ reply: result.text, sources: result.sources, conversationId: key });
+  return c.json<ChatResponse>({
+    reply: result.text,
+    sources: result.sources,
+    conversationId: key,
+    actions: result.actions,
+    leadCaptured: result.leadCaptured,
+  });
 });

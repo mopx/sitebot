@@ -121,6 +121,179 @@ describe("SitebotChatElement", () => {
     document.documentElement.lang = "";
   });
 
+  it("renders a chip row for the actions returned with a reply, separate from the bubble", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              reply: "I don't have anything on that.",
+              sources: [],
+              conversationId: "c1",
+              actions: [{ label: "Book a meeting", send: "I'd like to set up a meeting" }],
+            }),
+          ),
+      ),
+    );
+
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "some unrelated question";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".actions button")).toHaveLength(1);
+    });
+    expect(shadow.querySelector(".actions button")?.textContent).toBe("Book a meeting");
+    expect(shadow.querySelector(".message.assistant .actions")).toBeNull();
+  });
+
+  it("sends the chip's send-text, not its label, when clicked, and clears the chip row afterward", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(
+          JSON.stringify({
+            reply: "I don't have anything on that.",
+            sources: [],
+            conversationId: "c1",
+            actions: [{ label: "Book a meeting", send: "I'd like to set up a meeting" }],
+          }),
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "some unrelated question";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".actions button")).toHaveLength(1);
+    });
+
+    (shadow.querySelector(".actions button") as HTMLButtonElement).click();
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".message.user")).toHaveLength(2);
+    });
+    expect(shadow.querySelectorAll(".message.user")[1]?.textContent).toBe(
+      "I'd like to set up a meeting",
+    );
+    const secondCallBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
+      message: string;
+    };
+    expect(secondCallBody.message).toBe("I'd like to set up a meeting");
+    expect(shadow.querySelectorAll(".actions button")).toHaveLength(0);
+  });
+
+  it("clears the chip row when the visitor types their own message instead of clicking a chip", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              reply: "I don't have anything on that.",
+              sources: [],
+              conversationId: "c1",
+              actions: [{ label: "Book a meeting", send: "I'd like to set up a meeting" }],
+            }),
+          ),
+      ),
+    );
+
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "some unrelated question";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".actions button")).toHaveLength(1);
+    });
+
+    input.value = "a follow-up question";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".message.user")).toHaveLength(2);
+    });
+    expect(shadow.querySelectorAll(".actions button")).toHaveLength(0);
+  });
+
+  it("preserves a typed draft in the input when a chip is clicked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              reply: "I don't have anything on that.",
+              sources: [],
+              conversationId: "c1",
+              actions: [{ label: "Book a meeting", send: "I'd like to set up a meeting" }],
+            }),
+          ),
+      ),
+    );
+
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "some unrelated question";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".actions button")).toHaveLength(1);
+    });
+
+    input.value = "draft I was typing";
+    (shadow.querySelector(".actions button") as HTMLButtonElement).click();
+    expect(input.value).toBe("draft I was typing");
+  });
+
+  it("renders a confirmation banner when the reply sets leadCaptured", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              reply: "Got it, I'll pass this along.",
+              sources: [],
+              conversationId: "c1",
+              leadCaptured: true,
+            }),
+          ),
+      ),
+    );
+
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "I'm Maria, my email is maria@example.com, I need a website";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelector(".notice")).not.toBeNull();
+    });
+    expect(shadow.querySelector(".notice")?.textContent).toBe("Your details were shared.");
+  });
+
+  it("renders neither chips nor a banner for a plain reply", async () => {
+    const el = mount();
+    const shadow = el.shadowRoot!;
+    const input = shadow.querySelector("input") as HTMLInputElement;
+    input.value = "What does Jorge do?";
+    (shadow.querySelector("form") as HTMLFormElement).requestSubmit();
+
+    await vi.waitFor(() => {
+      expect(shadow.querySelectorAll(".message.assistant")).toHaveLength(1);
+    });
+    expect(shadow.querySelector(".actions")).toBeNull();
+    expect(shadow.querySelector(".notice")).toBeNull();
+  });
+
   it("shows a typing indicator while a reply is pending, and removes it once it arrives", async () => {
     let resolveFetch!: (response: Response) => void;
     vi.stubGlobal(

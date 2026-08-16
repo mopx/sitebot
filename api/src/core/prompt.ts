@@ -60,6 +60,14 @@ export function buildSystemPrompt(opts: BuildPromptOptions): string {
       "tool with what you have — don't interrogate them for it turn by turn, and don't ask for every " +
       "field before calling it if they've already volunteered enough.",
 
+    // 4b. Contact/meeting requests — an exception to the grounding rule above
+    "A message about scheduling a meeting, getting in touch, or contacting or hiring " +
+      `${persona.subjectName} directly is always a lead, even when <context> is empty or doesn't cover ` +
+      "it — never deflect on one of these. Warmly say you'll pass it along, ask for whatever's missing " +
+      "among their name, a one-line description of what they'd like to discuss, and how to reach them " +
+      "(email or phone), and call capture_lead once you have enough. Never invent scheduling links, " +
+      "calendar availability, or specific meeting times — only that their details will be passed along.",
+
     // 5. Language rule
     `Reply in ${locale}. If the user's latest message is clearly written in a different supported ` +
       `language (${localeList}), reply in that language instead. Never reply in an unsupported language.`,

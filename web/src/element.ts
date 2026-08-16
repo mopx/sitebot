@@ -1,3 +1,4 @@
+import type { ChatAction } from "@sitebot/shared";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "./locale.js";
 import { WIDGET_STYLES } from "./styles.js";
 import { getOrCreateSessionId } from "./session.js";
@@ -14,12 +15,34 @@ export interface WidgetConfig {
 interface DisplayMessage {
   role: "user" | "assistant" | "error";
   text: string;
+  /** Quick replies to offer under this message — see shared/src/api.ts#ChatAction. Rendered only while this is the last message (see renderMessages). */
+  actions?: ChatAction[];
+  /** True when this reply resulted in a captured lead — renders a confirmation banner under it. */
+  leadCaptured?: boolean;
 }
 
-const UI_COPY: Record<SupportedLocale, { placeholder: string; send: string; title: string }> = {
-  en: { placeholder: "Ask a question...", send: "Send", title: "Chat" },
-  es: { placeholder: "Escribe tu pregunta...", send: "Enviar", title: "Chat" },
-  zh: { placeholder: "输入你的问题...", send: "发送", title: "聊天" },
+const UI_COPY: Record<
+  SupportedLocale,
+  { placeholder: string; send: string; title: string; leadCaptured: string }
+> = {
+  en: {
+    placeholder: "Ask a question...",
+    send: "Send",
+    title: "Chat",
+    leadCaptured: "Your details were shared.",
+  },
+  es: {
+    placeholder: "Escribe tu pregunta...",
+    send: "Enviar",
+    title: "Chat",
+    leadCaptured: "Tus datos fueron compartidos.",
+  },
+  zh: {
+    placeholder: "输入你的问题...",
+    send: "发送",
+    title: "聊天",
+    leadCaptured: "你的信息已发送。",
+  },
 };
 
 /**
@@ -177,15 +200,53 @@ export class SitebotChatElement extends HTMLElement {
   }
 
   private renderMessages(): void {
-    const messageEls = this.messages.map((message) => {
-      const el = document.createElement("div");
-      el.className = `message ${message.role}`;
-      el.textContent = message.text;
-      return el;
+    const lastIndex = this.messages.length - 1;
+    const messageEls = this.messages.flatMap((message, index) => {
+      const bubble = document.createElement("div");
+      bubble.className = `message ${message.role}`;
+      bubble.textContent = message.text;
+
+      const els: HTMLElement[] = [bubble];
+      if (message.leadCaptured) els.push(this.renderNotice());
+      // Only on the last message, so "chip already clicked" needs no extra
+      // bookkeeping — send() always appends a new message next, which makes
+      // this one stop being last on the very next render and the row just
+      // disappears. See also the click handler below, which clears
+      // message.actions as a belt-and-suspenders measure.
+      if (index === lastIndex && message.actions?.length) {
+        els.push(this.renderActions(message));
+      }
+      return els;
     });
     if (this.sending) messageEls.push(this.renderTypingIndicator());
     this.messagesEl.replaceChildren(...messageEls);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+  }
+
+  private renderActions(message: DisplayMessage): HTMLDivElement {
+    const el = document.createElement("div");
+    el.className = "actions";
+    el.setAttribute("role", "group");
+    for (const action of message.actions ?? []) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = action.label;
+      button.disabled = this.sending;
+      button.addEventListener("click", () => {
+        if (this.sending) return;
+        message.actions = undefined;
+        void this.send(action.send);
+      });
+      el.append(button);
+    }
+    return el;
+  }
+
+  private renderNotice(): HTMLDivElement {
+    const el = document.createElement("div");
+    el.className = "notice";
+    el.textContent = this.copy.leadCaptured;
+    return el;
   }
 
   private renderTypingIndicator(): HTMLDivElement {
@@ -200,13 +261,15 @@ export class SitebotChatElement extends HTMLElement {
     return el;
   }
 
-  private async send(): Promise<void> {
-    const text = this.inputEl.value.trim();
+  private async send(overrideText?: string): Promise<void> {
+    const text = (overrideText ?? this.inputEl.value).trim();
     if (!text || this.sending) return;
 
     this.sending = true;
     this.sendButtonEl.disabled = true;
-    this.inputEl.value = "";
+    // A chip click supplies its own text — clearing the input here would
+    // wipe out anything the visitor had already half-typed themselves.
+    if (overrideText === undefined) this.inputEl.value = "";
     this.messages.push({ role: "user", text });
     this.renderMessages();
 
@@ -216,7 +279,12 @@ export class SitebotChatElement extends HTMLElement {
         { message: text, lang: this.config.lang },
       );
       if ("reply" in response) {
-        this.messages.push({ role: "assistant", text: response.reply });
+        this.messages.push({
+          role: "assistant",
+          text: response.reply,
+          actions: response.actions,
+          leadCaptured: response.leadCaptured,
+        });
       } else {
         this.messages.push({
           role: "error",

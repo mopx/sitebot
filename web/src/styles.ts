@@ -159,6 +159,44 @@ export const WIDGET_STYLES = `
     0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
     30% { opacity: 1; transform: translateY(-0.15rem); }
   }
+  .actions {
+    align-self: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    max-width: 85%;
+  }
+  .actions button {
+    border: 1px solid var(--sb-border);
+    background: transparent;
+    color: var(--sb-fg);
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    text-align: left;
+  }
+  .actions button:hover {
+    border-color: var(--sb-accent);
+  }
+  .actions button:focus-visible {
+    outline: 2px solid var(--sb-accent);
+    outline-offset: 2px;
+  }
+  .actions button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .notice {
+    align-self: center;
+    max-width: 85%;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--sb-muted);
+    border: 1px solid var(--sb-border);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.6rem;
+  }
   .composer {
     display: flex;
     gap: 0.5rem;

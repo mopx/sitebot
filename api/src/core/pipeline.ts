@@ -1,4 +1,5 @@
 import type {
+  ChatAction,
   InboundMessage,
   MessageSource,
   SupportedLocale,
@@ -12,6 +13,8 @@ import type { LeadSink } from "./leads.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { deflectionCopy, fallbackCopy } from "./errors.js";
 import { isGreeting, greetingCopy } from "./greeting.js";
+import { isContactIntent } from "./contactIntent.js";
+import { contactActions } from "./actions.js";
 import { log } from "../lib/log.js";
 
 /** RPC-shaped view of ConversationDO — see durable/conversation.ts for the implementation. */
@@ -47,7 +50,15 @@ export interface PipelineDeps {
 }
 
 export type TurnResult =
-  | { kind: "ok"; text: string; sources: MessageSource[] }
+  | {
+      kind: "ok";
+      text: string;
+      sources: MessageSource[];
+      /** Quick replies to offer alongside this reply — see core/actions.ts. Only set on the greeting and zero-chunks-deflection branches. */
+      actions?: ChatAction[];
+      /** True when the model called capture_lead with valid input this turn — see core/leads.ts#parseCapturedLead. */
+      leadCaptured?: boolean;
+    }
   | { kind: "rate_limited"; retryAfterSec: number; text: string }
   | { kind: "at_capacity"; text: string }
   | { kind: "duplicate" };
@@ -86,7 +97,7 @@ export async function handleTurn(deps: PipelineDeps, inbound: InboundMessage): P
   if (isGreeting(inbound.text)) {
     const text = greetingCopy(deps.tenant, lang);
     await deps.conversation.completeTurn(text, lang);
-    return { kind: "ok", text, sources: [] };
+    return { kind: "ok", text, sources: [], actions: contactActions(deps.tenant, lang) };
   }
 
   let chunks;
@@ -108,10 +119,14 @@ export async function handleTurn(deps: PipelineDeps, inbound: InboundMessage): P
   // No relevant content: short-circuit before spending an LLM call — see
   // docs/ARCHITECTURE.md §RAG pipeline. Still counts as a completed turn
   // (not a failure), so it's stored in history like any other exchange.
-  if (chunks.length === 0) {
+  // Exception: a message about scheduling/contacting (core/contactIntent.ts)
+  // rarely matches indexed content but is exactly what capture_lead exists
+  // for, so it falls through to the LLM call below instead of the canned
+  // deflection.
+  if (chunks.length === 0 && !isContactIntent(inbound.text)) {
     const text = deflectionCopy(deps.tenant, lang);
     await deps.conversation.completeTurn(text, lang);
-    return { kind: "ok", text, sources: [] };
+    return { kind: "ok", text, sources: [], actions: contactActions(deps.tenant, lang) };
   }
 
   const budgetCheck = await deps.budget.tryConsume(deps.budgetDailyCallCap);
@@ -139,6 +154,13 @@ export async function handleTurn(deps: PipelineDeps, inbound: InboundMessage): P
     });
     await deps.conversation.completeTurn(reply.text, lang);
 
+    // Reflects the model's intent (it called capture_lead with valid input),
+    // not whether the sink write below actually succeeded — computed here,
+    // independent of that best-effort call, so an invisible D1/Asana blip
+    // can never flip this to false and contradict a reply that already told
+    // the visitor their details would be passed along.
+    const leadCaptured = reply.leadCapture !== undefined;
+
     // Best-effort, never fails the turn — the person already has their
     // reply; losing the lead sink write shouldn't turn into a bad user
     // experience, just a logged gap for follow-up.
@@ -154,7 +176,12 @@ export async function handleTurn(deps: PipelineDeps, inbound: InboundMessage): P
         });
     }
 
-    return { kind: "ok", text: reply.text, sources: chunks.map((c) => c.source) };
+    return {
+      kind: "ok",
+      text: reply.text,
+      sources: chunks.map((c) => c.source),
+      leadCaptured,
+    };
   } catch (err) {
     await deps.budget.refund();
     await deps.conversation.failTurn();

@@ -86,4 +86,9 @@ describe("buildSystemPrompt", () => {
     const prompt = buildSystemPrompt({ persona, chunks, locale: "en", channel: "web" });
     expect(prompt).toContain("call the capture_lead tool");
   });
+
+  it("instructs never deflecting a scheduling/contact request even with empty context", () => {
+    const prompt = buildSystemPrompt({ persona, chunks: [], locale: "en", channel: "web" });
+    expect(prompt).toContain("never deflect on one of these");
+  });
 });

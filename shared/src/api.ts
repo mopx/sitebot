@@ -11,10 +11,20 @@ export interface ChatRequest {
   lang?: SupportedLocale;
 }
 
+/** A quick-reply chip. `send` is posted back exactly as if the visitor had typed it — no special server-side handling, just a shortcut through the normal pipeline. */
+export interface ChatAction {
+  label: string;
+  send: string;
+}
+
 export interface ChatResponseOk {
   reply: string;
   sources: MessageSource[];
   conversationId: string;
+  /** Quick replies to offer alongside this reply. Absent/empty = none. */
+  actions?: ChatAction[];
+  /** True when this turn's reply resulted from the model calling capture_lead with valid input. */
+  leadCaptured?: boolean;
 }
 
 export interface ChatResponseError {

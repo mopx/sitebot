@@ -14,6 +14,7 @@ import {
   type GenerateResult,
 } from "../../../src/core/generate.js";
 import type { LeadSink, CapturedLead, LeadContext } from "../../../src/core/leads.js";
+import { contactActions } from "../../../src/core/actions.js";
 
 const tenant: Tenant = {
   id: "tenant-1",
@@ -192,6 +193,19 @@ describe("handleTurn", () => {
     );
   });
 
+  it("offers contact quick replies alongside the greeting reply", async () => {
+    const { deps } = buildDeps({
+      conversation: fakeConversation(async () => ({
+        status: "ok",
+        history: historyEndingWith("Hey"),
+        lang: "en",
+      })),
+    });
+    const result = await handleTurn(deps, { ...inbound, text: "Hey" });
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") expect(result.actions).toEqual(contactActions(tenant, "en"));
+  });
+
   it("deflects without calling the generator or spending budget when retrieval finds nothing", async () => {
     const { deps, conversation, budget, generator } = buildDeps({
       retriever: new StubRetriever([]),
@@ -201,6 +215,7 @@ describe("handleTurn", () => {
     if (result.kind === "ok") {
       expect(result.text).toContain("No info on that.");
       expect(result.sources).toHaveLength(0);
+      expect(result.actions).toEqual(contactActions(tenant, "en"));
     }
     expect(generator.generate).not.toHaveBeenCalled();
     expect(budget.tryConsume).not.toHaveBeenCalled();
@@ -210,6 +225,32 @@ describe("handleTurn", () => {
     );
   });
 
+  it("offers quick replies in the conversation's resolved language, not a client hint", async () => {
+    const { deps } = buildDeps({
+      retriever: new StubRetriever([]),
+      conversation: fakeConversation(async () => ({
+        status: "ok",
+        history: historyEndingWith(inbound.text),
+        lang: "es",
+      })),
+    });
+    const result = await handleTurn(deps, inbound);
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") expect(result.actions).toEqual(contactActions(tenant, "es"));
+  });
+
+  it("calls the generator instead of deflecting when retrieval finds nothing but the message is a contact/meeting request", async () => {
+    const { deps, generator, budget } = buildDeps({ retriever: new StubRetriever([]) });
+    const result = await handleTurn(deps, { ...inbound, text: "How do I set up a meeting?" });
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") {
+      expect(result.text).toBe("Jorge builds web and mobile apps.");
+      expect(result.actions).toBeUndefined();
+    }
+    expect(budget.tryConsume).toHaveBeenCalledOnce();
+    expect(generator.generate).toHaveBeenCalledOnce();
+  });
+
   it("on the happy path: retrieves, consumes budget, generates, and completes the turn", async () => {
     const { deps, conversation, budget } = buildDeps();
     const result = await handleTurn(deps, inbound);
@@ -217,6 +258,7 @@ describe("handleTurn", () => {
     if (result.kind === "ok") {
       expect(result.text).toBe("Jorge builds web and mobile apps.");
       expect(result.sources).toEqual([{ url: "https://example.com" }]);
+      expect(result.actions).toBeUndefined();
     }
     expect(budget.tryConsume).toHaveBeenCalledWith(1500);
     expect(conversation.completeTurn).toHaveBeenCalledWith(
@@ -246,7 +288,10 @@ describe("handleTurn", () => {
     const { deps, conversation } = buildDeps({ retriever: new ThrowingRetriever() });
     const result = await handleTurn(deps, inbound);
     expect(result.kind).toBe("ok");
-    if (result.kind === "ok") expect(result.text).toContain("notes just now");
+    if (result.kind === "ok") {
+      expect(result.text).toContain("notes just now");
+      expect(result.actions).toBeUndefined();
+    }
     expect(conversation.failTurn).toHaveBeenCalledOnce();
     expect(conversation.completeTurn).not.toHaveBeenCalled();
   });
@@ -255,7 +300,10 @@ describe("handleTurn", () => {
     const { deps, conversation, budget } = buildDeps({ generator: new ThrowingGenerator() });
     const result = await handleTurn(deps, inbound);
     expect(result.kind).toBe("ok");
-    if (result.kind === "ok") expect(result.text).toContain("went wrong on my end");
+    if (result.kind === "ok") {
+      expect(result.text).toContain("went wrong on my end");
+      expect(result.actions).toBeUndefined();
+    }
     expect(budget.refund).toHaveBeenCalledOnce();
     expect(conversation.failTurn).toHaveBeenCalledOnce();
     expect(conversation.completeTurn).not.toHaveBeenCalled();
@@ -272,7 +320,10 @@ describe("handleTurn", () => {
     });
     const result = await handleTurn(deps, inbound);
     expect(result.kind).toBe("ok");
-    if (result.kind === "ok") expect(result.text).toBe("Got it, I'll pass this along.");
+    if (result.kind === "ok") {
+      expect(result.text).toBe("Got it, I'll pass this along.");
+      expect(result.leadCaptured).toBe(true);
+    }
     expect(leadSink.capture).toHaveBeenCalledWith(lead, {
       tenantId: tenant.id,
       channel: inbound.channel,
@@ -282,11 +333,13 @@ describe("handleTurn", () => {
 
   it("does not touch the lead sink when the generator returns no lead capture", async () => {
     const { deps, leadSink } = buildDeps();
-    await handleTurn(deps, inbound);
+    const result = await handleTurn(deps, inbound);
     expect(leadSink.capture).not.toHaveBeenCalled();
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") expect(result.leadCaptured).toBeFalsy();
   });
 
-  it("still returns the reply to the user when the lead sink throws", async () => {
+  it("still returns the reply to the user and flags leadCaptured when the lead sink throws", async () => {
     const lead: CapturedLead = {
       name: "Maria",
       phone: "+1 555 0100",
@@ -298,7 +351,12 @@ describe("handleTurn", () => {
     });
     const result = await handleTurn(deps, inbound);
     expect(result.kind).toBe("ok");
-    if (result.kind === "ok") expect(result.text).toBe("Got it, I'll pass this along.");
+    if (result.kind === "ok") {
+      expect(result.text).toBe("Got it, I'll pass this along.");
+      // Model intent, not sink success — a D1/Asana blip must never retract
+      // this after the reply already told the visitor it was passed along.
+      expect(result.leadCaptured).toBe(true);
+    }
     expect(conversation.completeTurn).toHaveBeenCalledWith("Got it, I'll pass this along.", "en");
   });
 });
