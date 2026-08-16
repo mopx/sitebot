@@ -81,4 +81,9 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("that is a lead, not an off-topic");
     expect(prompt).toContain("Never tell someone to find help elsewhere for something Jorge does.");
   });
+
+  it("instructs calling capture_lead once enough details are volunteered", () => {
+    const prompt = buildSystemPrompt({ persona, chunks, locale: "en", channel: "web" });
+    expect(prompt).toContain("call the capture_lead tool");
+  });
 });

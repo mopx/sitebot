@@ -158,3 +158,35 @@ adminRoute.get("/admin/conversations/:conversationId", async (c) => {
   const history = await stub.getHistory(limit);
   return c.json({ conversationId, history });
 });
+
+/**
+ * Captured leads (see src/core/leads.ts), newest first. `conversationId` on
+ * each row is the same id `/admin/conversations/:conversationId` accepts,
+ * for pulling up the full transcript behind a lead.
+ */
+adminRoute.get("/admin/leads", async (c) => {
+  const limit = Math.min(Number(c.req.query("limit") ?? 50) || 50, 200);
+  const result = await c.env.DB.prepare(
+    `SELECT id, tenant_id, channel, conversation_key, name, email, phone, budget,
+            project_description, asana_task_gid, created_at
+       FROM leads
+      ORDER BY created_at DESC
+      LIMIT ?`,
+  )
+    .bind(limit)
+    .all();
+  const leads = result.results.map((row) => ({
+    id: row.id,
+    tenantId: row.tenant_id,
+    channel: row.channel,
+    conversationId: row.conversation_key,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    budget: row.budget,
+    projectDescription: row.project_description,
+    asanaTaskGid: row.asana_task_gid,
+    createdAt: row.created_at,
+  }));
+  return c.json({ leads });
+});

@@ -8,6 +8,7 @@ import type {
 import type { Generator } from "./generate.js";
 import { GenerationError } from "./generate.js";
 import type { Retriever } from "./retrieval.js";
+import type { LeadSink } from "./leads.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { deflectionCopy, fallbackCopy } from "./errors.js";
 import { isGreeting, greetingCopy } from "./greeting.js";
@@ -35,7 +36,10 @@ export interface PipelineDeps {
   generator: Generator;
   conversation: ConversationRpc;
   budget: BudgetRpc;
+  leadSink: LeadSink;
   tenant: Tenant;
+  /** The ConversationDO's name (`${tenantId}:${channel}:${senderHash}` — see core/deps.ts#conversationKey). Threaded through only to tag captured leads with it. */
+  conversationKey: string;
   maxPerDay: number;
   historyWindow: number;
   maxReplyTokens: number;
@@ -133,8 +137,24 @@ export async function handleTurn(deps: PipelineDeps, inbound: InboundMessage): P
       model: deps.tenant.claudeModel ?? "claude-haiku-4-5",
       maxTokens: deps.maxReplyTokens,
     });
-    await deps.conversation.completeTurn(reply, lang);
-    return { kind: "ok", text: reply, sources: chunks.map((c) => c.source) };
+    await deps.conversation.completeTurn(reply.text, lang);
+
+    // Best-effort, never fails the turn — the person already has their
+    // reply; losing the lead sink write shouldn't turn into a bad user
+    // experience, just a logged gap for follow-up.
+    if (reply.leadCapture) {
+      await deps.leadSink
+        .capture(reply.leadCapture, {
+          tenantId: deps.tenant.id,
+          channel: inbound.channel,
+          conversationKey: deps.conversationKey,
+        })
+        .catch((err) => {
+          log.error("lead_capture_failed", { tenant: deps.tenant.slug, error: String(err) });
+        });
+    }
+
+    return { kind: "ok", text: reply.text, sources: chunks.map((c) => c.source) };
   } catch (err) {
     await deps.budget.refund();
     await deps.conversation.failTurn();

@@ -11,7 +11,9 @@ import {
   GenerationError,
   type Generator,
   type GenerateParams,
+  type GenerateResult,
 } from "../../../src/core/generate.js";
+import type { LeadSink, CapturedLead, LeadContext } from "../../../src/core/leads.js";
 
 const tenant: Tenant = {
   id: "tenant-1",
@@ -54,14 +56,23 @@ class ThrowingRetriever implements Retriever {
 }
 
 class StubGenerator implements Generator {
-  generate = vi.fn(
-    async (_params: GenerateParams): Promise<string> => "Jorge builds web and mobile apps.",
-  );
+  constructor(private readonly result: GenerateResult = { text: "Jorge builds web and mobile apps." }) {}
+  generate = vi.fn(async (_params: GenerateParams): Promise<GenerateResult> => this.result);
 }
 
 class ThrowingGenerator implements Generator {
-  generate = vi.fn(async (): Promise<string> => {
+  generate = vi.fn(async (): Promise<GenerateResult> => {
     throw new GenerationError("boom", new Error("boom"));
+  });
+}
+
+class StubLeadSink implements LeadSink {
+  capture = vi.fn(async (_lead: CapturedLead, _ctx: LeadContext): Promise<void> => undefined);
+}
+
+class ThrowingLeadSink implements LeadSink {
+  capture = vi.fn(async (): Promise<void> => {
+    throw new Error("D1 unavailable");
   });
 }
 
@@ -98,6 +109,7 @@ interface TestSetup {
   budget: ReturnType<typeof fakeBudget>;
   retriever: StubRetriever | ThrowingRetriever;
   generator: StubGenerator | ThrowingGenerator;
+  leadSink: StubLeadSink | ThrowingLeadSink;
 }
 
 function buildDeps(
@@ -106,6 +118,7 @@ function buildDeps(
     budget?: ReturnType<typeof fakeBudget>;
     retriever?: StubRetriever | ThrowingRetriever;
     generator?: StubGenerator | ThrowingGenerator;
+    leadSink?: StubLeadSink | ThrowingLeadSink;
   } = {},
 ): TestSetup {
   const conversation = overrides.conversation ?? fakeConversation();
@@ -116,6 +129,7 @@ function buildDeps(
       { text: "Jorge builds apps.", source: { url: "https://example.com" }, score: 0.9 },
     ]);
   const generator = overrides.generator ?? new StubGenerator();
+  const leadSink = overrides.leadSink ?? new StubLeadSink();
 
   const deps: PipelineDeps = {
     tenant,
@@ -123,12 +137,14 @@ function buildDeps(
     budget,
     retriever,
     generator,
+    leadSink,
+    conversationKey: "tenant-1:web:session-1",
     maxPerDay: 40,
     historyWindow: 12,
     maxReplyTokens: 800,
     budgetDailyCallCap: 1500,
   };
-  return { deps, conversation, budget, retriever, generator };
+  return { deps, conversation, budget, retriever, generator, leadSink };
 }
 
 describe("handleTurn", () => {
@@ -243,5 +259,46 @@ describe("handleTurn", () => {
     expect(budget.refund).toHaveBeenCalledOnce();
     expect(conversation.failTurn).toHaveBeenCalledOnce();
     expect(conversation.completeTurn).not.toHaveBeenCalled();
+  });
+
+  it("captures the lead when the generator returns one", async () => {
+    const lead: CapturedLead = {
+      name: "Maria",
+      email: "maria@example.com",
+      projectDescription: "Needs a marketing site.",
+    };
+    const { deps, leadSink } = buildDeps({
+      generator: new StubGenerator({ text: "Got it, I'll pass this along.", leadCapture: lead }),
+    });
+    const result = await handleTurn(deps, inbound);
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") expect(result.text).toBe("Got it, I'll pass this along.");
+    expect(leadSink.capture).toHaveBeenCalledWith(lead, {
+      tenantId: tenant.id,
+      channel: inbound.channel,
+      conversationKey: deps.conversationKey,
+    });
+  });
+
+  it("does not touch the lead sink when the generator returns no lead capture", async () => {
+    const { deps, leadSink } = buildDeps();
+    await handleTurn(deps, inbound);
+    expect(leadSink.capture).not.toHaveBeenCalled();
+  });
+
+  it("still returns the reply to the user when the lead sink throws", async () => {
+    const lead: CapturedLead = {
+      name: "Maria",
+      phone: "+1 555 0100",
+      projectDescription: "Needs a marketing site.",
+    };
+    const { deps, conversation } = buildDeps({
+      generator: new StubGenerator({ text: "Got it, I'll pass this along.", leadCapture: lead }),
+      leadSink: new ThrowingLeadSink(),
+    });
+    const result = await handleTurn(deps, inbound);
+    expect(result.kind).toBe("ok");
+    if (result.kind === "ok") expect(result.text).toBe("Got it, I'll pass this along.");
+    expect(conversation.completeTurn).toHaveBeenCalledWith("Got it, I'll pass this along.", "en");
   });
 });

@@ -69,6 +69,9 @@ export interface Env {
   WHATSAPP_VERIFY_TOKEN?: string;
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
+  /** Both required to push captured leads to Asana (core/leads.ts) — without either, leads still land in D1, just without the Asana task. */
+  ASANA_ACCESS_TOKEN?: string;
+  ASANA_PROJECT_GID?: string;
 }
 
 function num(value: string, fallback: number): number {

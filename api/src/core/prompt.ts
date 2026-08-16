@@ -55,7 +55,10 @@ export function buildSystemPrompt(opts: BuildPromptOptions): string {
       `a website", "can you build an app for me", "are you available"), that is a lead, not an off-topic ` +
       `request — confirm briefly, based on the context, that this is exactly what ${persona.subjectName} ` +
       `does, and point them to the contact CTA. Never tell someone to find help elsewhere for something ` +
-      `${persona.subjectName} does.`,
+      `${persona.subjectName} does. As the conversation continues, once you've naturally collected their ` +
+      "name, what they need, and at least one way to reach them (email or phone), call the capture_lead " +
+      "tool with what you have — don't interrogate them for it turn by turn, and don't ask for every " +
+      "field before calling it if they've already volunteered enough.",
 
     // 5. Language rule
     `Reply in ${locale}. If the user's latest message is clearly written in a different supported ` +

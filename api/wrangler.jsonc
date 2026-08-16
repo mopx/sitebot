@@ -108,4 +108,8 @@
   //   WHATSAPP_VERIFY_TOKEN, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET
   //                       - single-tenant mode only; in multi-tenant mode these
   //                         live per-tenant in D1 instead (see /admin API).
+  //   ASANA_ACCESS_TOKEN, ASANA_PROJECT_GID
+  //                       - optional, any mode; pushes captured leads (src/core/leads.ts)
+  //                         to an Asana task. Omit to skip the Asana push — leads are
+  //                         still written to D1 either way.
 }

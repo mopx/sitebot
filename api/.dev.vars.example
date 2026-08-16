@@ -17,3 +17,11 @@ WHATSAPP_APP_SECRET=
 WHATSAPP_VERIFY_TOKEN=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_WEBHOOK_SECRET=
+
+# Optional, any mode — pushes captured leads (see src/core/leads.ts) to an
+# Asana task in addition to storing them in D1. Leaving these blank just
+# skips the Asana push; leads are still captured.
+# ASANA_ACCESS_TOKEN: Asana Personal Access Token (My Profile Settings > Apps > Manage Developer Apps).
+# ASANA_PROJECT_GID: the target project's numeric id (from its URL: app.asana.com/0/<project_gid>/list).
+ASANA_ACCESS_TOKEN=
+ASANA_PROJECT_GID=

@@ -78,7 +78,7 @@ chatRoute.post("/api/chat/:tenant?", async (c) => {
   const key = await conversationKey(env, tenant, "web", sessionId);
   const conversation = getConversationStub(env, key);
   const budget = getBudgetStub(env, tenant);
-  const deps = buildPipelineDeps(env, tenant, conversation, budget);
+  const deps = buildPipelineDeps(env, tenant, conversation, budget, key);
   deps.maxPerDay = tunables(env).rateLimitPerDayWeb;
 
   const result = await handleTurn(deps, inbound);

@@ -105,7 +105,7 @@ async function processWhatsAppMessages(
     const key = await conversationKey(env, tenant, "whatsapp", inbound.senderId);
     const conversation = getConversationStub(env, key);
     const budget = getBudgetStub(env, tenant);
-    const deps = buildPipelineDeps(env, tenant, conversation, budget);
+    const deps = buildPipelineDeps(env, tenant, conversation, budget, key);
 
     const result = await handleTurn(deps, inbound);
     if (result.kind === "duplicate") continue;

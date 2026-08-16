@@ -141,6 +141,10 @@ npx wrangler secret put WHATSAPP_VERIFY_TOKEN  # any random string you choose
 # Multi-tenant (SaaS) mode only — see docs/SAAS.md:
 npx wrangler secret put ADMIN_API_KEY
 npx wrangler secret put TENANT_SECRETS_KEY     # openssl rand -base64 32
+# Optional, any mode — pushes captured leads (src/core/leads.ts) to an Asana task
+# in addition to D1. Skip both to leave the Asana push off; leads are still captured.
+npx wrangler secret put ASANA_ACCESS_TOKEN     # Asana PAT: My Profile Settings > Apps > Manage Developer Apps
+npx wrangler secret put ASANA_PROJECT_GID      # numeric id from the project's URL
 ```
 
 **True secrets you already hold (API keys) should be typed directly into the interactive

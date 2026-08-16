@@ -150,6 +150,17 @@ describe("/admin/conversations/:conversationId", () => {
 
 });
 
+describe("/admin/leads", () => {
+  it("is not available in single-tenant mode", async () => {
+    const response = await SELF.fetch("https://example.com/admin/leads", {
+      headers: { authorization: "Bearer test-admin-key" },
+    });
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.error).toBe("not_available_in_single_tenant_mode");
+  });
+});
+
 describe("unknown routes", () => {
   it("returns a JSON 404", async () => {
     const response = await SELF.fetch("https://example.com/nope");

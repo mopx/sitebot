@@ -55,7 +55,7 @@ telegramRoute.post("/webhooks/telegram/:tenant?", async (c) => {
         const key = await conversationKey(env, tenant, "telegram", inbound.senderId);
         const conversation = getConversationStub(env, key);
         const budget = getBudgetStub(env, tenant);
-        const deps = buildPipelineDeps(env, tenant, conversation, budget);
+        const deps = buildPipelineDeps(env, tenant, conversation, budget, key);
 
         const result = await handleTurn(deps, inbound);
         if (result.kind === "duplicate") return;
